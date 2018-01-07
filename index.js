@@ -1,3 +1,4 @@
+
 const Telegraf = require('telegraf')
 var mysql = require('mysql')
 const config = require('../config.js');
@@ -57,13 +58,14 @@ app.command('start', ({
 app.command('about', ({ reply }) => reply('<INSERT ABOUT US INFORMATION HERE>'))
 
 app.command('info', (ctx) => {
-    getUser(ctx.from.username, function(err, data){
+    getUser(ctx.from.id, function(err, data){
         if (err) { console.log("ERROR: ", err);}
         else {
-            telegram_id = data;
-            if (telegram_id == ctx.from.username){
-                replyString = `Welcome, ${ctx.from.username}!`;
-                queryString = `SELECT * FROM purchase WHERE telegram_id = '${ctx.from.username}'`;
+            console.log('ONE is:', data);
+            console.log('TWO is:', ctx.from.id);
+            if (data == ctx.from.id){
+                replyString = `Welcome, ${ctx.from.id}!`;
+                queryString = `SELECT * FROM purchase WHERE telegram_id = '${ctx.from.id}'`;
                 con.query(queryString, function(err, rows, fields) {
                     if (err) throw err;
                     for (var i in rows) {
@@ -84,33 +86,41 @@ app.command('info', (ctx) => {
     }
 )
 
-//register user - stage 1: ask for email
+//register user - stage 1: ask for email //FIX THIS
 app.hears('register now', (ctx) => {
-    var hasUser = checkUser(ctx.from.username);
-    if (hasUser)
-        ctx.reply('You are already registered');
-    else{    
-        queryString = `INSERT INTO status (telegram_id, register_stage) VALUES ('${ctx.from.username}' , 1)`;        
-        console.log(queryString);
-        con.query(queryString);
-        ctx.reply('Please reply with your email');
-    }
+
+    getUser(ctx.from.id, function(err, data){
+        if (err) { console.log("ERROR: ", err);}
+        else {
+            telegram_id = data;
+            if (telegram_id == ctx.from.id){
+                replyString = `You are already registered.`;                
+                ctx.reply(replyString);    
+            }else{
+                queryString = `INSERT INTO status (telegram_id, register_stage) VALUES ('${ctx.from.id}' , 1)`;        
+                console.log(queryString);
+                con.query(queryString);
+                ctx.reply('Please reply with your email');    
+            }
+        }
+        
+    });  
 
 })
 
 //register user - stage 2: ask for phone number
 app.hears(/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/i, (ctx) => {
-    getRegisterStage(ctx.from.username, function(err, data){
+    getRegisterStage(ctx.from.id, function(err, data){
         if (err) { console.log("ERROR: ", err);}
         else {
             stage = data;
             var email = ctx.message.text;
             if (stage == 1){
-                queryString = `INSERT INTO user (telegram_id, first_name, last_name, email) VALUES ('${ctx.from.username}', '${ctx.from.first_name}', '${ctx.from.last_name}', '${email}')`
+                queryString = `INSERT INTO user (telegram_id, first_name, last_name, email) VALUES ('${ctx.from.id}', '${ctx.from.first_name}', '${ctx.from.last_name}', '${email}')`
                 console.log(queryString);
                 con.query(queryString);
                 ctx.reply('Please reply with your mobile phone number.');
-                queryString = `UPDATE status SET register_stage = 2 WHERE telegram_id = '${ctx.from.username}';`
+                queryString = `UPDATE status SET register_stage = 2 WHERE telegram_id = '${ctx.from.id}';`
                 con.query(queryString);
         
             }else if (stage != 1){//TODO: add edit email function
@@ -125,17 +135,17 @@ app.hears(/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-
 
 //register user - stage 3: done
 app.hears(/^\d{8}$/i, (ctx) => {
-    getRegisterStage(ctx.from.username, function(err, data){
+    getRegisterStage(ctx.from.id, function(err, data){
         if (err) { console.log("ERROR: ", err);}
         else {
             stage = data;
             var number = ctx.message.text;
             if (stage == 2){
-                queryString = `UPDATE user SET mobile = '${number}' WHERE telegram_id = '${ctx.from.username}'`;
+                queryString = `UPDATE user SET mobile = '${number}' WHERE telegram_id = '${ctx.from.id}'`;
                 console.log(queryString);
                 con.query(queryString);
                 ctx.reply('Thank you for registering!');
-                queryString = `UPDATE status SET register_stage = 3 WHERE telegram_id = '${ctx.from.username}';`
+                queryString = `UPDATE status SET register_stage = 3 WHERE telegram_id = '${ctx.from.id}';`
                 con.query(queryString);
         
             }else if (stage == 3){//TODO: add edit email function
@@ -168,7 +178,7 @@ products.forEach(p => {
         console.log(`${ctx.from.first_name} is about to buy a ${p.name}.`);
         if (p.name == 'One Month Pass') pid = 1;
         else pid = 3;
-        queryString = `SELECT * FROM PURCHASE WHERE telegram_id = '${ctx.from.username}' AND pid = '${pid}';`;
+        queryString = `SELECT * FROM PURCHASE WHERE telegram_id = '${ctx.from.id}' AND pid = '${pid}';`;
         console.log(queryString);
         // TODO: check whether user has already got subscription, if have, ask if it is to top up or not.
         con.query(queryString, function(err, rows, fields) {
@@ -186,28 +196,40 @@ products.forEach(p => {
 // Handle payment callbacks
 app.on('pre_checkout_query', ({ answerPreCheckoutQuery }) => answerPreCheckoutQuery(true))
 app.on('successful_payment', (ctx) => {
-    console.log(`${ctx.from.first_name} (${ctx.from.username}) just payed ${ctx.message.successful_payment.total_amount / 100} SGD.`)
+    console.log(`${ctx.from.first_name} (${ctx.from.id}) just payed ${ctx.message.successful_payment.total_amount / 100} SGD.`)
     
     if (ctx.message.successful_payment.total_amount == 999) 
         pid = 1;
     else
         pid = 3;
-    console.log(`INSERT INTO purchase (telegram_id, pid) VALUES ('${ctx.from.username}', '${pid}')`);
-    con.query(`INSERT INTO purchase (telegram_id, pid) VALUES ('${ctx.from.username}', '${pid}')`);
+    console.log(`INSERT INTO purchase (telegram_id, pid) VALUES ('${ctx.from.id}', '${pid}')`);
+    con.query(`INSERT INTO purchase (telegram_id, pid) VALUES ('${ctx.from.id}', '${pid}')`);
     
 
 })
 
-function getUser(username, callback){
-    queryString = `SELECT * FROM user WHERE telegram_id = '${username}';`;
-    con.query(queryString, function(err, result){
-        if (err) callback(err, null);
-        else callback(null, result[0].telegram_id)
-    });
+function getUser(id, callback){
+    queryString = `SELECT * FROM user WHERE telegram_id = '${id}';`;
+
+    console.log(queryString);
+    if (queryString == 'SELECT * FROM user WHERE telegram_id = \'undefined\'')
+        callback(null, 'no user');
+    else{
+        con.query(queryString, function(err, result){
+            console.log('user is: ', id);
+            if (err) callback(err, null);
+            else {
+                if(result.length > 0)
+                    callback(null, result[0].telegram_id);
+                else
+                callback(null, 'no such user');
+            }
+        });
+    }
 }
 
-function getRegisterStage(username, callback){
-    queryString = `SELECT * FROM status WHERE telegram_id = '${username}';`;
+function getRegisterStage(id, callback){
+    queryString = `SELECT * FROM status WHERE telegram_id = '${id}';`;
     console.log(queryString);
     con.query(queryString, function(err, result){
         if (err) callback(err, null);
