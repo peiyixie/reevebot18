@@ -1,8 +1,6 @@
 const Telegraf = require('telegraf')
 var mysql = require('mysql')
 const config = require('../config.js');
-var stage = 0;
-var hasUser = false;
 
 var con = mysql.createConnection({
 
@@ -56,7 +54,7 @@ function createInvoice(product) {
 // Start command
 app.command('start', ({
      reply }) => reply('Welcome to Reeve, the first lunchbox vending machine in Singapore! \nPress /about to know more about us and /product to see our subscription packages for lunchboxes!'))
-app.command('about', ({ reply }) => reply('<Insert information here>'))
+app.command('about', ({ reply }) => reply('<INSERT ABOUT US INFORMATION HERE>'))
 
 app.command('info', (ctx) => {
     getUser(ctx.from.username, function(err, data){
@@ -69,17 +67,15 @@ app.command('info', (ctx) => {
                 con.query(queryString, function(err, rows, fields) {
                     if (err) throw err;
                     for (var i in rows) {
-                    console.log('User has subscription id: ', rows[i].pid);
-                    replyString = replyString + `\n You have a ${rows[i].pid} Month Subscription until ${rows[i].exp_date}`;
-                    }
+                    replyString = `\n You have a ${rows[i].pid} Month Subscription until ${rows[i].exp_date}`;
+                    ctx.reply(replyString);        
+                }
                 });
                 ctx.reply(replyString);    
             }else{
-                ctx.replyWithMarkdown('You have not registered! test',
+                ctx.replyWithMarkdown('You have not registered!',
                 Markup.keyboard(['register now']).oneTime().resize().extra());    
             }
-
-            
         }
         
     });   
@@ -94,8 +90,7 @@ app.hears('register now', (ctx) => {
     if (hasUser)
         ctx.reply('You are already registered');
     else{    
-        queryString = `INSERT INTO status (telegram_id, register_stage) VALUES ('${ctx.from.username}' , 1)`;
-        
+        queryString = `INSERT INTO status (telegram_id, register_stage) VALUES ('${ctx.from.username}' , 1)`;        
         console.log(queryString);
         con.query(queryString);
         ctx.reply('Please reply with your email');
@@ -109,10 +104,8 @@ app.hears(/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-
         if (err) { console.log("ERROR: ", err);}
         else {
             stage = data;
-            console.log('Stage is : ', stage);
             var email = ctx.message.text;
             if (stage == 1){
-                console.log(email);
                 queryString = `INSERT INTO user (telegram_id, first_name, last_name, email) VALUES ('${ctx.from.username}', '${ctx.from.first_name}', '${ctx.from.last_name}', '${email}')`
                 console.log(queryString);
                 con.query(queryString);
@@ -120,17 +113,39 @@ app.hears(/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-
                 queryString = `UPDATE status SET register_stage = 2 WHERE telegram_id = '${ctx.from.username}';`
                 con.query(queryString);
         
-            }else if (stage == 2){//TODO: add edit email function
+            }else if (stage != 1){//TODO: add edit email function
                 ctx.replyWithMarkdown(`Do you want to update your email address?`, 
-                    Markup.keyboard(['Update Email to ${email}', 'Cancel']).oneTime().resize().extra() 
+                    Markup.keyboard([`Update Email to ${email}`, `Cancel`]).oneTime().resize().extra() 
                 )
             }            
         }
     });
+})// end collecting email
 
-    
 
-})
+//register user - stage 3: done
+app.hears(/^\d{8}$/i, (ctx) => {
+    getRegisterStage(ctx.from.username, function(err, data){
+        if (err) { console.log("ERROR: ", err);}
+        else {
+            stage = data;
+            var number = ctx.message.text;
+            if (stage == 2){
+                queryString = `UPDATE user SET mobile = '${number}' WHERE telegram_id = '${ctx.from.username}'`;
+                console.log(queryString);
+                con.query(queryString);
+                ctx.reply('Thank you for registering!');
+                queryString = `UPDATE status SET register_stage = 3 WHERE telegram_id = '${ctx.from.username}';`
+                con.query(queryString);
+        
+            }else if (stage == 3){//TODO: add edit email function
+                ctx.replyWithMarkdown(`Do you want to update your phone number?`, 
+                    Markup.keyboard([`Update Mobile to ${number}`, `Cancel`]).oneTime().resize().extra() 
+                )
+            }            
+        }
+    });
+})// end collecting phone number
 
 
 // Show offer
@@ -155,11 +170,11 @@ products.forEach(p => {
         else pid = 3;
         queryString = `SELECT * FROM PURCHASE WHERE telegram_id = '${ctx.from.username}' AND pid = '${pid}';`;
         console.log(queryString);
-        // TODO: check whether user has got subscription
+        // TODO: check whether user has already got subscription, if have, ask if it is to top up or not.
         con.query(queryString, function(err, rows, fields) {
             if (err) throw err;
             for (var i in rows) {
-            console.log('DATE EXP is : ', rows[i].exp_date);
+            console.log('DATE EXP is : ', rows[i].exp_date);            
             }
         });
         ctx.replyWithInvoice(createInvoice(p))
@@ -189,7 +204,6 @@ function getUser(username, callback){
         if (err) callback(err, null);
         else callback(null, result[0].telegram_id)
     });
-
 }
 
 function getRegisterStage(username, callback){
@@ -198,8 +212,7 @@ function getRegisterStage(username, callback){
     con.query(queryString, function(err, result){
         if (err) callback(err, null);
         else callback(null, result[0].register_stage)
-    });
-    
+    });    
 }
 
 
