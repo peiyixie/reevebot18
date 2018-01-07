@@ -1,12 +1,13 @@
 const Telegraf = require('telegraf')
 var mysql = require('mysql')
+const config = require('./config');
 
 var con = mysql.createConnection({
 
-    host: "localhost",
-    user: "root",
-    password: "telebot18",
-    database: "reeve_bot"
+    host: config.db.host,
+    user: config.db.user,
+    password: config.db.password,
+    database: config.db.database
 
 });
 
@@ -19,8 +20,8 @@ con.connect(function(err) {
 
 const { Markup } = Telegraf
 
-const app = new Telegraf('549390114:AAFWxPnuj-6kTxld8YcJUHn1FN_zV7Aa-Gw')
-const PAYMENT_TOKEN = '284685063:TEST:ZjJjYzQ3NGQ3YmE2'
+const app = new Telegraf(config.app.token)
+const PAYMENT_TOKEN = config.app.ptoken
 
 const products = [
     {
