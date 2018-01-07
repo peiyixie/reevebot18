@@ -1,6 +1,8 @@
 const Telegraf = require('telegraf')
 var mysql = require('mysql')
 const config = require('../config.js');
+var stage = 0;
+var hasUser = false;
 
 var con = mysql.createConnection({
 
@@ -56,6 +58,81 @@ app.command('start', ({
      reply }) => reply('Welcome to Reeve, the first lunchbox vending machine in Singapore! \nPress /about to know more about us and /product to see our subscription packages for lunchboxes!'))
 app.command('about', ({ reply }) => reply('<Insert information here>'))
 
+app.command('info', (ctx) => {
+    getUser(ctx.from.username, function(err, data){
+        if (err) { console.log("ERROR: ", err);}
+        else {
+            telegram_id = data;
+            if (telegram_id == ctx.from.username){
+                replyString = `Welcome, ${ctx.from.username}!`;
+                queryString = `SELECT * FROM purchase WHERE telegram_id = '${ctx.from.username}'`;
+                con.query(queryString, function(err, rows, fields) {
+                    if (err) throw err;
+                    for (var i in rows) {
+                    console.log('User has subscription id: ', rows[i].pid);
+                    replyString = replyString + `\n You have a ${rows[i].pid} Month Subscription until ${rows[i].exp_date}`;
+                    }
+                });
+                ctx.reply(replyString);    
+            }else{
+                ctx.replyWithMarkdown('You have not registered! test',
+                Markup.keyboard(['register now']).oneTime().resize().extra());    
+            }
+
+            
+        }
+        
+    });   
+
+
+    }
+)
+
+//register user - stage 1: ask for email
+app.hears('register now', (ctx) => {
+    var hasUser = checkUser(ctx.from.username);
+    if (hasUser)
+        ctx.reply('You are already registered');
+    else{    
+        queryString = `INSERT INTO status (telegram_id, register_stage) VALUES ('${ctx.from.username}' , 1)`;
+        
+        console.log(queryString);
+        con.query(queryString);
+        ctx.reply('Please reply with your email');
+    }
+
+})
+
+//register user - stage 2: ask for phone number
+app.hears(/^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/i, (ctx) => {
+    getRegisterStage(ctx.from.username, function(err, data){
+        if (err) { console.log("ERROR: ", err);}
+        else {
+            stage = data;
+            console.log('Stage is : ', stage);
+            var email = ctx.message.text;
+            if (stage == 1){
+                console.log(email);
+                queryString = `INSERT INTO user (telegram_id, first_name, last_name, email) VALUES ('${ctx.from.username}', '${ctx.from.first_name}', '${ctx.from.last_name}', '${email}')`
+                console.log(queryString);
+                con.query(queryString);
+                ctx.reply('Please reply with your mobile phone number.');
+                queryString = `UPDATE status SET register_stage = 2 WHERE telegram_id = '${ctx.from.username}';`
+                con.query(queryString);
+        
+            }else if (stage == 2){//TODO: add edit email function
+                ctx.replyWithMarkdown(`Do you want to update your email address?`, 
+                    Markup.keyboard(['Update Email to ${email}', 'Cancel']).oneTime().resize().extra() 
+                )
+            }            
+        }
+    });
+
+    
+
+})
+
+
 // Show offer
 app.hears(/^what.*/i, ({ replyWithMarkdown }) => replyWithMarkdown(`
 You want to know what I have to offer? Sure!
@@ -105,5 +182,25 @@ app.on('successful_payment', (ctx) => {
     
 
 })
+
+function getUser(username, callback){
+    queryString = `SELECT * FROM user WHERE telegram_id = '${username}';`;
+    con.query(queryString, function(err, result){
+        if (err) callback(err, null);
+        else callback(null, result[0].telegram_id)
+    });
+
+}
+
+function getRegisterStage(username, callback){
+    queryString = `SELECT * FROM status WHERE telegram_id = '${username}';`;
+    console.log(queryString);
+    con.query(queryString, function(err, result){
+        if (err) callback(err, null);
+        else callback(null, result[0].register_stage)
+    });
+    
+}
+
 
 app.startPolling()
