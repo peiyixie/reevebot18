@@ -1,6 +1,6 @@
 const Telegraf = require('telegraf')
 var mysql = require('mysql')
-const config = require('./config.js');
+const config = require('../config.js');
 
 var con = mysql.createConnection({
 
