@@ -1,13 +1,13 @@
 const Telegraf = require('telegraf')
 var mysql = require('mysql')
-const config = require('./config');
+const config = require('./config.js');
 
 var con = mysql.createConnection({
 
     host: config.db.host,
     user: config.db.user,
     password: config.db.password,
-    database: config.db.database
+    database: config.db.name
 
 });
 
@@ -82,7 +82,7 @@ products.forEach(p => {
         con.query(queryString, function(err, rows, fields) {
             if (err) throw err;
             for (var i in rows) {
-                console.log('DATE EXP is : ', rows[i].exp_date);
+            console.log('DATE EXP is : ', rows[i].exp_date);
             }
         });
         ctx.replyWithInvoice(createInvoice(p))
