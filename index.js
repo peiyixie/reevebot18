@@ -2,6 +2,12 @@
 const Telegraf = require('telegraf')
 var mysql = require('mysql')
 const config = require('../config.js');
+var QRCode = require('qrcode')
+var passphrase = 'telebot18';
+
+var crypto = require('crypto'),
+    algorithm = 'aes-256-ctr',
+    password = config.encode.passphrase;
 
 var con = mysql.createConnection({
 
@@ -64,7 +70,7 @@ app.command('info', (ctx) => {
             console.log('ONE is:', data);
             console.log('TWO is:', ctx.from.id);
             if (data == ctx.from.id){
-                replyString = `Welcome, ${ctx.from.id}!`;
+                replyString = `Welcome, ${ctx.from.first_name}!`;
                 queryString = `SELECT * FROM purchase WHERE telegram_id = '${ctx.from.id}'`;
                 con.query(queryString, function(err, rows, fields) {
                     if (err) throw err;
@@ -86,7 +92,7 @@ app.command('info', (ctx) => {
     }
 )
 
-//register user - stage 1: ask for email //FIX THIS
+//register user - stage 1: ask for email 
 app.hears('register now', (ctx) => {
 
     getUser(ctx.from.id, function(err, data){
@@ -157,6 +163,36 @@ app.hears(/^\d{8}$/i, (ctx) => {
     });
 })// end collecting phone number
 
+
+app.command('rent', (ctx) => {
+    
+    telegram_id = ctx.from.id;
+
+    txt = telegram_id + '|||' + new Date().toLocaleString();
+    console.log('-->' + txt + '<--')
+    console.log('-->' + passphrase + '<--')
+    txt_en = encrypt(txt);
+    console.log('-->' + txt_en + '<--')
+
+    QRCode.toFile('./'+ctx.from.id+'.jpeg', txt_en, function(err){
+        if (err) throw err
+        console.log('done')
+
+        try{
+            filepath = `./`+ctx.from.id+`.jpeg`;
+            console.log(filepath);
+            ctx.replyWithPhoto({ source: filepath });            
+        }
+        catch (err){
+            console.log(err)
+        }
+
+    })
+
+
+
+
+})
 
 // Show offer
 app.hears(/^what.*/i, ({ replyWithMarkdown }) => replyWithMarkdown(`
@@ -236,6 +272,20 @@ function getRegisterStage(id, callback){
         else callback(null, result[0].register_stage)
     });    
 }
+
+function encrypt(text){
+    var cipher = crypto.createCipher(algorithm,password)
+    var crypted = cipher.update(text,'utf8','hex')
+    crypted += cipher.final('hex');
+    return crypted;
+  }
+   
+  function decrypt(text){
+    var decipher = crypto.createDecipher(algorithm,password)
+    var dec = decipher.update(text,'hex','utf8')
+    dec += decipher.final('utf8');
+    return dec;
+  }
 
 
 app.startPolling()
