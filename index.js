@@ -81,19 +81,18 @@ app.command('info', (ctx) => {
                 });
                 ctx.reply(replyString);    
             }else{
-                ctx.replyWithMarkdown('You have not registered!',
-                Markup.keyboard(['register now']).oneTime().resize().extra());    
+                ctx.replyWithMarkdown(`Welcome, ${ctx.from.first_name}! You have not registered!`,
+                Markup.keyboard(['/register']).oneTime().resize().extra());    
             }
         }
         
     });   
 
-
     }
 )
 
 //register user - stage 1: ask for email 
-app.hears('register now', (ctx) => {
+app.command('register', (ctx) => {
 
     getUser(ctx.from.id, function(err, data){
         if (err) { console.log("ERROR: ", err);}
@@ -150,38 +149,30 @@ app.hears(/^\d{8}$/i, (ctx) => {
                 queryString = `UPDATE user SET mobile = '${number}' WHERE telegram_id = '${ctx.from.id}'`;
                 console.log(queryString);
                 con.query(queryString);
-                ctx.reply('Thank you for registering!');
                 queryString = `UPDATE status SET register_stage = 3 WHERE telegram_id = '${ctx.from.id}';`
                 con.query(queryString);
         
-            }else if (stage == 3){//TODO: add edit email function
+            }else if (stage == 3){//TODO: add edit number function
                 ctx.replyWithMarkdown(`Do you want to update your phone number?`, 
                     Markup.keyboard([`Update Mobile to ${number}`, `Cancel`]).oneTime().resize().extra() 
                 )
             }            
         }
     });
-})// end collecting phone number
 
-
-app.command('rent', (ctx) => {
-    
     telegram_id = ctx.from.id;
 
-    txt = telegram_id + '|||' + new Date().toLocaleString();
-    console.log('-->' + txt + '<--')
-    console.log('-->' + passphrase + '<--')
+    txt = telegram_id + '|-|' + 'register';
     txt_en = encrypt(txt);
-    console.log('-->' + txt_en + '<--')
 
-    QRCode.toFile('./'+ctx.from.id+'.jpeg', txt_en, function(err){
+    QRCode.toFile('./'+ctx.from.id+'_register.jpeg', txt_en, function(err){
         if (err) throw err
-        console.log('done')
-
+        console.log('created register qr code for', ctx.from.id)
         try{
-            filepath = `./`+ctx.from.id+`.jpeg`;
+            filepath = `./`+ctx.from.id+`_register.jpeg`;
             console.log(filepath);
-            ctx.replyWithPhoto({ source: filepath });            
+            ctx.replyWithPhoto({ source: filepath });
+            ctx.reply('Show this QR code to complete registeration at our booths. 5 SGD deposit needed.');
         }
         catch (err){
             console.log(err)
@@ -189,8 +180,33 @@ app.command('rent', (ctx) => {
 
     })
 
+})// end collecting phone number and generated qr code for user to complete registration
 
 
+app.command('rent', (ctx) => {
+    
+    telegram_id = ctx.from.id;
+
+    txt = telegram_id + '|-|' + new Date().toLocaleString() + '|-|' + 'rent';
+    console.log('-->' + txt + '<--')
+    console.log('-->' + passphrase + '<--')
+    txt_en = encrypt(txt);
+    console.log('-->' + txt_en + '<--')
+
+    QRCode.toFile('./'+ctx.from.id+'_rent.jpeg', txt_en, function(err){
+        if (err) throw err
+        console.log('created rent qr code for', ctx.from.id)
+        try{
+            filepath = `./`+ctx.from.id+`_rent.jpeg`;
+            console.log(filepath);
+            ctx.replyWithPhoto({ source: filepath });
+            ctx.reply('Scan QR code to get a lunchbox!');
+        }
+        catch (err){
+            console.log(err)
+        }
+
+    })
 
 })
 
