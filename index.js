@@ -30,6 +30,7 @@ const { Markup } = Telegraf
 const app = new Telegraf(config.app.token)
 const PAYMENT_TOKEN = config.app.ptoken
 
+//Product offer -- no longer needed
 const products = [
     {
         name: 'One Month Pass',
@@ -43,6 +44,8 @@ const products = [
     }
 ]
 
+
+// Create invoice for purchase -- no longer needed
 function createInvoice(product) {
     return {
         provider_token: PAYMENT_TOKEN,
@@ -210,7 +213,7 @@ app.command('rent', (ctx) => {
 
 })
 
-// Show offer
+// Show offer -- no longer needed
 app.hears(/^what.*/i, ({ replyWithMarkdown }) => replyWithMarkdown(`
 You want to know what I have to offer? Sure!
 ${products.reduce((acc, p) => acc += `*${p.name}* - ${p.price} SGD\n`, '')}    
@@ -224,7 +227,7 @@ What do you want?`,
     Markup.keyboard(products.map(p => p.name)).oneTime().resize().extra()
 ))
 
-// Order product
+// Order product -- no longer needed
 products.forEach(p => {
     app.hears(p.name, (ctx) => {
         console.log(`${ctx.from.first_name} is about to buy a ${p.name}.`);
@@ -245,7 +248,7 @@ products.forEach(p => {
 
 
 
-// Handle payment callbacks
+// Handle payment callbacks -- no longer needed
 app.on('pre_checkout_query', ({ answerPreCheckoutQuery }) => answerPreCheckoutQuery(true))
 app.on('successful_payment', (ctx) => {
     console.log(`${ctx.from.first_name} (${ctx.from.id}) just payed ${ctx.message.successful_payment.total_amount / 100} SGD.`)
@@ -294,14 +297,14 @@ function encrypt(text){
     var crypted = cipher.update(text,'utf8','hex')
     crypted += cipher.final('hex');
     return crypted;
-  }
+}
    
-  function decrypt(text){
+function decrypt(text){
     var decipher = crypto.createDecipher(algorithm,password)
     var dec = decipher.update(text,'hex','utf8')
     dec += decipher.final('utf8');
     return dec;
-  }
+}
 
 
 app.startPolling()
