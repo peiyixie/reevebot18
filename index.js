@@ -1,29 +1,52 @@
-
 const Telegraf = require('telegraf')
 var mysql = require('mysql')
 const config = require('../config.js');
 var QRCode = require('qrcode')
-var passphrase = 'telebot18';
+
 
 var crypto = require('crypto'),
     algorithm = 'aes-256-ctr',
     password = config.encode.passphrase;
 
-var con = mysql.createConnection({
+var db_config = {
 
     host: config.db.host,
     user: config.db.user,
     password: config.db.password,
     database: config.db.name
 
-});
+};
 
-con.connect(function(err) {
+// con.connect(function(err) {
 
-    if (err) throw err;
-    console.log("connected!");
+//     if (err) throw err;
+//     console.log("connected!");
 
-});
+// });
+
+function handleDisconnect() {
+    con = mysql.createConnection(db_config); // Recreate the connection, since
+                                                    // the old one cannot be reused.
+  
+    con.connect(function(err) {              // The server is either down
+      if(err) {                                     // or restarting (takes a while sometimes).
+        console.log('error when connecting to db:', err);
+        setTimeout(handleDisconnect, 2000); // We introduce a delay before attempting to reconnect,
+      }                                   // to avoid a hot loop, and to allow our node script to
+      console.log('connected!')
+    });                                     // process asynchronous requests in the meantime.
+                                            // If you're also serving http, display a 503 error.
+    con.on('error', function(err) {
+      console.log('db error', err);
+      if(err.code === 'PROTOCOL_CONNECTION_LOST') { // Connection to the MySQL server is usually
+        handleDisconnect();                         // lost due to either server restart, or a
+      } else {                                      // connnection idle timeout (the wait_timeout
+        throw err;                                  // server variable configures this)
+      }
+    });
+  }
+  
+  handleDisconnect();
 
 const { Markup } = Telegraf
 
@@ -73,15 +96,7 @@ app.command('info', (ctx) => {
             console.log('ONE is:', data);
             console.log('TWO is:', ctx.from.id);
             if (data == ctx.from.id){
-                replyString = `Welcome, ${ctx.from.first_name}!`;
-                queryString = `SELECT * FROM purchase WHERE telegram_id = '${ctx.from.id}'`;
-                con.query(queryString, function(err, rows, fields) {
-                    if (err) throw err;
-                    for (var i in rows) {
-                    replyString = `\n You have a ${rows[i].pid} Month Subscription until ${rows[i].exp_date}`;
-                    ctx.reply(replyString);        
-                }
-                });
+                replyString = `Welcome, ${ctx.from.first_name}!`;                
                 ctx.reply(replyString);    
             }else{
                 ctx.replyWithMarkdown(`Welcome, ${ctx.from.first_name}! You have not registered!`,
@@ -192,7 +207,6 @@ app.command('rent', (ctx) => {
 
     txt = telegram_id + '|-|' + new Date().toLocaleString() + '|-|' + 'rent';
     console.log('-->' + txt + '<--')
-    console.log('-->' + passphrase + '<--')
     txt_en = encrypt(txt);
     console.log('-->' + txt_en + '<--')
 
@@ -228,6 +242,7 @@ What do you want?`,
 ))
 
 // Order product -- no longer needed
+/*
 products.forEach(p => {
     app.hears(p.name, (ctx) => {
         console.log(`${ctx.from.first_name} is about to buy a ${p.name}.`);
@@ -246,8 +261,6 @@ products.forEach(p => {
     })
 })
 
-
-
 // Handle payment callbacks -- no longer needed
 app.on('pre_checkout_query', ({ answerPreCheckoutQuery }) => answerPreCheckoutQuery(true))
 app.on('successful_payment', (ctx) => {
@@ -262,6 +275,7 @@ app.on('successful_payment', (ctx) => {
     
 
 })
+*/
 
 function getUser(id, callback){
     queryString = `SELECT * FROM user WHERE telegram_id = '${id}';`;
