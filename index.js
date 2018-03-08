@@ -86,7 +86,7 @@ function createInvoice(product) {
 
 // Start command
 app.command('start', ({
-     reply }) => reply('Welcome to Reeve, the first lunchbox vending machine in Singapore! \nPress /about to know more about us and /product to see our subscription packages for lunchboxes!'))
+     reply }) => reply('Welcome to Reeve, the first lunchbox vending machine in Singapore! \nPress /about to know more about us and /info to see your profile!'))
 
      app.command('about', ({ reply }) => reply('<INSERT ABOUT US INFORMATION HERE>'))
 
@@ -118,18 +118,54 @@ app.command('info', (ctx) => {
                     txt = telegram_id + '|-|' + 'register';
                     txt_en = encrypt(txt);
                 
-                    QRCode.toFile('./'+ctx.from.id+'_register.jpeg', txt_en, function(err){
+                    QRCode.toFile('./'+ctx.from.id+'_register.jpeg', txt, function(err){
                         if (err) throw err
                         try{
                             filepath = `./`+ctx.from.id+`_register.jpeg`;
                             ctx.replyWithPhoto({ source: filepath });
-                            ctx.reply('Show this QR code to complete registeration at our booths. 5 SGD deposit needed.');
+                            ctx.reply('Show this QR code and pay 3 dollars to complete registeration at our booths.');
                         }
                         catch (err){
                             console.log(err)
                         }
                 
                     })
+                }else if (stage == 4){
+                    getUserInfo(ctx.from.id, function(err, data){
+                        if (err) { console.log("ERROR: ", err);}
+                        else{
+                            email = data.email;
+                            mobile = data.mobile;
+                            point = data.point;
+                            replyString = `Email: ` + email + `\nMobile: ` + mobile + `\nPoint: ` + point;
+                            ctx.reply(replyString);
+                        }
+                    })
+
+                    getDeposit(ctx.from.id, function(err, data){
+                        if (err) { console.log("ERROR: ", err);}
+                        else {
+                            var now = new Date();
+                            epoch_time = data;
+                            var exp_date = new Date(epoch_time * 1000);
+                
+                            if (epoch_time != 'no user' && epoch_time != 'no deposit'){
+                                if (exp_date >= now){
+                                    ctx.reply('Your deposit will expire on ' + formatDate(exp_date));    
+                                   
+                                }else{                                                                        
+                                    ctx.reply('Your deposit expired on ' + formatDate(exp_date) + '. Please type /info to deposit again');    
+                                }
+                            }else{
+                                ctx.reply('You have no deposit, type /info to continue.');    
+                
+                            }
+                        }
+                        
+                    });  
+                    
+
+
                 }            
             }
         });
@@ -147,8 +183,48 @@ app.command('register', (ctx) => {
         else {
             telegram_id = data;
             if (telegram_id == ctx.from.id){
-                replyString = `You are already registered.`;                
-                ctx.reply(replyString);    
+
+                getRegisterStage(ctx.from.id, function(err, data){
+                    if (err) { console.log("ERROR: ", err);}
+                    else{
+                        stage = data;
+                        if (stage == 4){
+                            replyString = `You are already registered.`;                
+                            ctx.reply(replyString); 
+                        }else if (stage == 3){                            
+                            telegram_id = ctx.from.id;
+
+                            txt = telegram_id + '|-|' + 'register';
+                            txt_en = encrypt(txt);
+                        
+                            QRCode.toFile('./'+ctx.from.id+'_register.jpeg', txt, function(err){
+                                if (err) throw err
+                                try{
+                                    filepath = `./`+ctx.from.id+`_register.jpeg`;
+                                    ctx.replyWithPhoto({ source: filepath });
+                                    ctx.reply('Show this QR code to complete registeration at our booths. 5 SGD deposit needed.');
+                                }
+                                catch (err){
+                                    console.log(err)
+                                }
+                        
+                            })
+                        }else if (stage==2){
+                            replyString = `Please reply with your mobile phone number to continue registration.`;                
+                            ctx.reply(replyString); 
+                        }else if (stage ==1){
+                            replyString = `Please reply with your email to continue registration.`;                
+                            ctx.reply(replyString); 
+
+                        }
+                        
+
+                    }
+
+
+                })
+                // replyString = `You are already registered.`;                
+                // ctx.reply(replyString);    
             }else{
                 queryString = `INSERT INTO status (telegram_id, register_stage) VALUES ('${ctx.from.id}' , 1)`;        
                 con.query(queryString);
@@ -210,7 +286,7 @@ app.hears(/^\d{8}$/i, (ctx) => {
     txt = telegram_id + '|-|' + 'register';
     txt_en = encrypt(txt);
 
-    QRCode.toFile('./'+ctx.from.id+'_register.jpeg', txt_en, function(err){
+    QRCode.toFile('./'+ctx.from.id+'_register.jpeg', txt, function(err){
         if (err) throw err
         try{
             filepath = `./`+ctx.from.id+`_register.jpeg`;
@@ -236,12 +312,12 @@ app.command('rent', (ctx) => {
             epoch_time = data;
             var exp_date = new Date(epoch_time * 1000);
 
-            if (exp_date != 'no user'){
+            if (epoch_time != 'no user' && epoch_time != 'no deposit'){
                 if (exp_date >= now){
-                    txt = telegram_id + '|-|' + new Date().toLocaleString() + '|-|' + 'rent';
+                    txt = telegram_id + '|-|' + new Date().toLocaleString() + '' + 'rent';
                     txt_en = encrypt(txt);
                     console.log('-->' + txt_en + '<--')
-                        QRCode.toFile('./'+ctx.from.id+'_rent.jpeg', txt_en, function(err){
+                        QRCode.toFile('./'+ctx.from.id+'_rent.jpeg', txt, function(err){
                         if (err) throw err
                 
                         try{
@@ -284,7 +360,7 @@ app.command('return', (ctx) => {
                 txt = telegram_id + '|-|' + new Date().toLocaleString() + '|-|' + 'return' + '|-|' + r_id;
                 txt_en = encrypt(txt);
                 console.log('-->' + txt_en + '<--')
-                QRCode.toFile('./'+ctx.from.id+'_return.jpeg', txt_en, function(err){
+                QRCode.toFile('./'+ctx.from.id+'_return.jpeg', txt, function(err){
                     if (err) throw err
             
                     try{
@@ -313,18 +389,18 @@ app.command('return', (ctx) => {
 
 
 // Show offer -- no longer needed
-app.hears(/^what.*/i, ({ replyWithMarkdown }) => replyWithMarkdown(`
-You want to know what I have to offer? Sure!
-${products.reduce((acc, p) => acc += `*${p.name}* - ${p.price} SGD\n`, '')}    
-What do you want?`,
-    Markup.keyboard(products.map(p => p.name)).oneTime().resize().extra()
-))
-app.command('product', ({ replyWithMarkdown }) => replyWithMarkdown(`
-You want to know what I have to offer? Sure!
-${products.reduce((acc, p) => acc += `*${p.name}* - ${p.price} SGD\n`, '')}    
-What do you want?`,
-    Markup.keyboard(products.map(p => p.name)).oneTime().resize().extra()
-))
+// app.hears(/^what.*/i, ({ replyWithMarkdown }) => replyWithMarkdown(`
+// You want to know what I have to offer? Sure!
+// ${products.reduce((acc, p) => acc += `*${p.name}* - ${p.price} SGD\n`, '')}    
+// What do you want?`,
+//     Markup.keyboard(products.map(p => p.name)).oneTime().resize().extra()
+// ))
+// app.command('product', ({ replyWithMarkdown }) => replyWithMarkdown(`
+// You want to know what I have to offer? Sure!
+// ${products.reduce((acc, p) => acc += `*${p.name}* - ${p.price} SGD\n`, '')}    
+// What do you want?`,
+//     Markup.keyboard(products.map(p => p.name)).oneTime().resize().extra()
+// ))
 
 // Order product -- no longer needed
 /*
@@ -379,6 +455,24 @@ function getUser(id, callback){
     }
 }
 
+function getUserInfo(id, callback){
+    queryString = `SELECT * FROM user WHERE telegram_id = '${id}';`;
+    if (queryString == 'SELECT * FROM user WHERE telegram_id = \'undefined\'')
+        callback(null, 'no user');
+    else{
+        con.query(queryString, function(err, result){
+            if (err) callback(err, null);
+            else {
+                if(result.length > 0)
+                    callback(null, result[0]);
+                else
+                callback(null, 'no user');
+            }
+        });
+    }
+}
+
+// TODO: add checking of existing rentals to prevent user from renting more than one box
 function getDeposit(id, callback){
     queryString = `SELECT UNIX_TIMESTAMP(exp_date) AS exp_epoch FROM deposit WHERE telegram_id = '${id}';`;
     if (queryString == 'SELECT UNIX_TIMESTAMP(exp_date) AS exp_epoch FROM deposit WHERE telegram_id = \'undefined\'')
@@ -391,7 +485,7 @@ function getDeposit(id, callback){
                     callback(null, result[0].exp_epoch);
                 }
                 else{
-                    callback(null, 'no user');
+                    callback(null, 'no deposit');
 
                 }
                 
@@ -414,7 +508,6 @@ function getRental(id, callback){
                 }
                 else{
                     callback(null, 'no user');
-
                 }
                 
 
@@ -425,9 +518,19 @@ function getRental(id, callback){
 
 function getRegisterStage(id, callback){
     queryString = `SELECT * FROM status WHERE telegram_id = '${id}';`;
+
+    if (queryString == 'SELECT * FROM status WHERE telegram_id = \'undefined\'')
+        callback(null, 'no user');
     con.query(queryString, function(err, result){
         if (err) callback(err, null);
-        else callback(null, result[0].register_stage)
+            else {
+                if(result.length > 0){
+                    callback(null, result[0].register_stage);
+                }
+                else{
+                    callback(null, 'no user');
+                }
+            }
     });    
 }
 
