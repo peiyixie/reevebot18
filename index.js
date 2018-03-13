@@ -113,9 +113,9 @@ app.command('info', (ctx) => {
                 }else if (stage == 2){
                     ctx.reply('Please reply with your mobile phone number to continue registration.');
                 }else if (stage == 3){
-                    telegram_id = ctx.from.id;
+                    chat_id = ctx.chat.id;
 
-                    txt = telegram_id + '|-|' + 'register';
+                    txt = chat_id + '|-|' + 'register';
                     txt_en = encrypt(txt);
                 
                     QRCode.toFile('./'+ctx.from.id+'_register.jpeg', txt, function(err){
@@ -157,8 +157,7 @@ app.command('info', (ctx) => {
                                     ctx.reply('Your deposit expired on ' + formatDate(exp_date) + '. Please type /info to deposit again');    
                                 }
                             }else{
-                                ctx.reply('You have no deposit, type /info to continue.');    
-                
+                                ctx.reply('You have no deposit, type /info to continue.');                     
                             }
                         }
                         
@@ -192,9 +191,9 @@ app.command('register', (ctx) => {
                             replyString = `You are already registered.`;                
                             ctx.reply(replyString); 
                         }else if (stage == 3){                            
-                            telegram_id = ctx.from.id;
+                            chat_id = ctx.chat.id;
 
-                            txt = telegram_id + '|-|' + 'register';
+                            txt = chat_id + '|-|' + 'register';
                             txt_en = encrypt(txt);
                         
                             QRCode.toFile('./'+ctx.from.id+'_register.jpeg', txt, function(err){
@@ -281,9 +280,9 @@ app.hears(/^\d{8}$/i, (ctx) => {
         }
     });
 
-    telegram_id = ctx.from.id;
+    chat_id = ctx.chat.id;
 
-    txt = telegram_id + '|-|' + 'register';
+    txt = chat_id + '|-|' + 'register';
     txt_en = encrypt(txt);
 
     QRCode.toFile('./'+ctx.from.id+'_register.jpeg', txt, function(err){
@@ -314,7 +313,7 @@ app.command('rent', (ctx) => {
 
             if (epoch_time != 'no user' && epoch_time != 'no deposit'){
                 if (exp_date >= now){
-                    txt = telegram_id + '|-|' + new Date().toLocaleString() + '' + 'rent';
+                    txt = ctx.chat.id + '|-|' + new Date().toLocaleString() + '|-|' + 'rent';
                     txt_en = encrypt(txt);
                     console.log('-->' + txt_en + '<--')
                         QRCode.toFile('./'+ctx.from.id+'_rent.jpeg', txt, function(err){
@@ -348,7 +347,7 @@ app.command('rent', (ctx) => {
 
 
 app.command('return', (ctx) => {
-    telegram_id = ctx.from.id;
+    telegram_id = ctx.chat.id;
 
     getRental(ctx.from.id, function(err, data){
         if (err) { console.log("ERROR: ", err);}
