@@ -86,9 +86,9 @@ function createInvoice(product) {
 
 // Start command
 app.command('start', ({
-     reply }) => reply('Welcome to Reeve, the first lunchbox vending machine in Singapore! \nPress /about to know more about us and /info to see your profile!'))
+     reply }) => reply('Welcome to Reeve, the first lunchbox rental service in Singapore! \nPress /about to know more about us and /register to start using Reeve!'))
 
-     app.command('about', ({ reply }) => reply('<INSERT ABOUT US INFORMATION HERE>'))
+     app.command('about', ({ reply }) => reply('Welcome to Reeve!'))
 
 app.command('info', (ctx) => {
     getUser(ctx.from.id, function(err, data){
@@ -349,6 +349,7 @@ app.command('rent', (ctx) => {
 app.command('return', (ctx) => {
     telegram_id = ctx.chat.id;
 
+// TODO: add checking of existing rentals to prevent user from renting more than one box
     getRental(ctx.from.id, function(err, data){
         if (err) { console.log("ERROR: ", err);}
         else {
@@ -471,7 +472,6 @@ function getUserInfo(id, callback){
     }
 }
 
-// TODO: add checking of existing rentals to prevent user from renting more than one box
 function getDeposit(id, callback){
     queryString = `SELECT UNIX_TIMESTAMP(exp_date) AS exp_epoch FROM deposit WHERE telegram_id = '${id}';`;
     if (queryString == 'SELECT UNIX_TIMESTAMP(exp_date) AS exp_epoch FROM deposit WHERE telegram_id = \'undefined\'')
