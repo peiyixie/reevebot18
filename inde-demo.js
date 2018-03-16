@@ -2,6 +2,8 @@ const Telegraf = require('telegraf')
 var mysql = require('mysql')
 const config = require('../config.js');
 var QRCode = require('qrcode')
+const delay = require('delay');
+
 
 
 var crypto = require('crypto'),
@@ -86,15 +88,9 @@ function createInvoice(product) {
 
 // Start command
 app.command('start', ({
-<<<<<<< HEAD
      reply }) => reply('Welcome to REEVE! Let\'s say no to single-use disposables together! \nPress /about to know more about us and /register to start using Reeve!'))
 
      app.command('about', ({ reply }) => reply('REEVE is a value-added service that helps you \'dabao\' in an environmentally sustainable manner. We aim to encourage the use of reusable lunchboxes over disposable containers for takeaways.'))
-=======
-     reply }) => reply('Welcome to Reeve, the first lunchbox rental service in Singapore! \nPress /about to know more about us and /register to start using Reeve!'))
-
-     app.command('about', ({ reply }) => reply('Welcome to Reeve!'))
->>>>>>> c308e7e5fac90483b3f0b17444a30597d7483c19
 
 app.command('info', (ctx) => {
     getUser(ctx.from.id, function(err, data){
@@ -130,7 +126,7 @@ app.command('info', (ctx) => {
                             filepath = `./`+ctx.from.id+`_register.jpeg`;
                             ctx.replyWithPhoto({ source: filepath });
                             ctx.reply('Show this QR code and pay 4 dollars to complete registeration at our booths.');
-                            ctx.reply('The \'I Like To Give It A Try\' Package - For $4, you are entitled to a lunchbox and the washing service will be priced at $0.20 per wash. This package is valid for up to 150 washes.\n*The washing fee is for the aunties and uncles working hard behind the scenes to ensure that you get a clean lunchbox whenever you need one.');
+                            ctx.reply('The \'I Like To Give It A Try\' Package - For $4, you are entitled to a lunchbox and the washing service will be priced at $0.20 per wash. This package is valid for up to 150 washes.\n*The washing fee is for the aunties and uncles working hard behind the scenes to ensure that you get a clean lunchbox whenever you need one.');                            
                         }
                         catch (err){
                             console.log(err)
@@ -197,7 +193,7 @@ app.command('register', (ctx) => {
                         if (stage == 4){
                             replyString = `You are already registered.`;                
                             ctx.reply(replyString); 
-                        }else if (stage == 3){                            
+                        }else if (stage == 3){  //demo will not have stage 3                          
                             chat_id = ctx.chat.id;
 
                             txt = chat_id + '|-|' + 'register';
@@ -277,8 +273,14 @@ app.hears(/^\d{8}$/i, (ctx) => {
             if (stage == 2){
                 queryString = `UPDATE user SET mobile = '${number}' WHERE telegram_id = '${ctx.from.id}'`;
                 con.query(queryString);
-                queryString = `UPDATE status SET register_stage = 3 WHERE telegram_id = '${ctx.from.id}';`
-                con.query(queryString);
+                queryString = `UPDATE status SET register_stage = 4 WHERE telegram_id = '${ctx.from.id}';` // demo only stage is updated to 4 here
+                con.query(queryString);//demo only
+                queryString = `INSERT INTO DEPOSIT (telegram_id, pid) VALUES ('${ctx.from.id}', 1);` // demo only insert deposit auto
+                con.query(queryString);//demo only
+                delay(3000).then(() => {
+                    ctx.reply(`You are successfully registered`);     
+                });
+                            
         
             }else if (stage == 3){//TODO: add edit number function
                 ctx.replyWithMarkdown(`Do you want to update your phone number?`, 
@@ -300,7 +302,7 @@ app.hears(/^\d{8}$/i, (ctx) => {
             ctx.replyWithPhoto({ source: filepath });
             ctx.reply('Show this QR code and pay 4 dollars to complete registeration at our booths.');
             ctx.reply('The \'I Like To Give It A Try\' Package - For $4, you are entitled to a lunchbox and the washing service will be priced at $0.20 per wash. This package is valid for up to 150 washes.\n*The washing fee is for the aunties and uncles working hard behind the scenes to ensure that you get a clean lunchbox whenever you need one.');
-}
+        }
         catch (err){
             console.log(err)
         }
@@ -332,6 +334,12 @@ app.command('rent', (ctx) => {
                             filepath = `./`+ctx.from.id+`_rent.jpeg`;                
                             ctx.replyWithPhoto({ source: filepath });
                             ctx.reply('Scan QR code to get a lunchbox!');
+                            //demo only
+                            queryString = `INSERT INTO rental (t_id, b_id) VALUES ('${ctx.from.id}', 1);` // demo only insert deposit auto
+                            con.query(queryString);//demo only            
+                            delay(2000).then(() => {
+                                ctx.reply(`Success, enjoy your Reeve box`);     
+                            });
                         }
                         catch (err){
                             console.log(err)
@@ -376,6 +384,17 @@ app.command('return', (ctx) => {
                         filepath = `./`+ctx.from.id+`_return.jpeg`;                
                         ctx.replyWithPhoto({ source: filepath });
                         ctx.reply('Scan QR code to return your lunchbox!');
+                        queryString = `UPDATE user SET point = point + 1 WHERE telegram_id = '${ctx.from.id}'`;//demo only
+                        con.query(queryString);//demo only
+                        queryString = `DELETE FROM rental WHERE r_id = '${r_id}'`;//demo only
+                        con.query(queryString);//demo only
+
+
+                        delay(2000).then(() => {
+                            ctx.reply('Success, you scored one more Reeve point! Type /info to view your points');//demo only
+                        });
+
+                        
                     }
                     catch (err){
                         console.log(err)
