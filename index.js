@@ -86,9 +86,15 @@ function createInvoice(product) {
 
 // Start command
 app.command('start', ({
+<<<<<<< HEAD
      reply }) => reply('Welcome to REEVE! Let\'s say no to single-use disposables together! \nPress /about to know more about us and /register to start using Reeve!'))
 
      app.command('about', ({ reply }) => reply('REEVE is a value-added service that helps you \'dabao\' in an environmentally sustainable manner. We aim to encourage the use of reusable lunchboxes over disposable containers for takeaways.'))
+=======
+     reply }) => reply('Welcome to Reeve, the first lunchbox rental service in Singapore! \nPress /about to know more about us and /register to start using Reeve!'))
+
+     app.command('about', ({ reply }) => reply('Welcome to Reeve!'))
+>>>>>>> c308e7e5fac90483b3f0b17444a30597d7483c19
 
 app.command('info', (ctx) => {
     getUser(ctx.from.id, function(err, data){
