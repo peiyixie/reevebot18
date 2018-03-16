@@ -9,6 +9,7 @@
   "author": "Stanley Xie Peiyi",
   "license": "ISC",
   "dependencies": {
+    "delay": "^2.0.0",
     "mysql": "^2.15.0",
     "qrcode": "^1.2.0",
     "telegraf": "^3.17.2"
