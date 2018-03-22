@@ -98,7 +98,7 @@ app.command('info', (ctx) => {
         else {
             if (data == ctx.from.id){
                 replyString = `Welcome, ${ctx.from.first_name}!`;                
-                ctx.reply(replyString);    
+                // ctx.reply(replyString);                    
             }else{
                 ctx.replyWithMarkdown(`Welcome, ${ctx.from.first_name}! You have not registered!`,
                 Markup.keyboard(['/register']).oneTime().resize().extra());    
@@ -140,8 +140,10 @@ app.command('info', (ctx) => {
                             email = data.email;
                             mobile = data.mobile;
                             point = data.point;
-                            replyString = `Email: ` + email + `\nMobile: ` + mobile + `\nPoint: ` + point;
+                            var cycle = 150 - point;
+                            replyString = `Welcome, ${ctx.from.first_name}!\nEmail: ` + email + `\nMobile: ` + mobile + `\nPoint: ` + point +`\nNumber of cycles left: `+ cycle + `.`;
                             ctx.reply(replyString);
+                            
                         }
                     })
 
@@ -154,10 +156,10 @@ app.command('info', (ctx) => {
                 
                             if (epoch_time != 'no user' && epoch_time != 'no deposit'){
                                 if (exp_date >= now){
-                                    ctx.reply('Your deposit will expire on ' + formatDate(exp_date));    
+                                    //ctx.reply('Your deposit will expire on ' + formatDate(exp_date));    
                                    
                                 }else{                                                                        
-                                    ctx.reply('Your deposit expired on ' + formatDate(exp_date) + '. Please type /info to deposit again');    
+                                    //ctx.reply('Your deposit expired on ' + formatDate(exp_date) + '. Please type /info to deposit again');    
                                 }
                             }else{
                                 ctx.reply('You have no deposit, type /info to continue.');                     
@@ -275,7 +277,7 @@ app.hears(/^\d{8}$/i, (ctx) => {
                 con.query(queryString);
                 queryString = `UPDATE status SET register_stage = 4 WHERE telegram_id = '${ctx.from.id}';` // demo only stage is updated to 4 here
                 con.query(queryString);//demo only
-                queryString = `INSERT INTO DEPOSIT (telegram_id, pid) VALUES ('${ctx.from.id}', 1);` // demo only insert deposit auto
+                queryString = `INSERT INTO deposit (telegram_id, pid) VALUES ('${ctx.from.id}', 1);` // demo only insert deposit auto
                 con.query(queryString);//demo only
                 delay(3000).then(() => {
                     ctx.reply(`You are successfully registered`);     
@@ -323,33 +325,49 @@ app.command('rent', (ctx) => {
             var exp_date = new Date(epoch_time * 1000);
 
             if (epoch_time != 'no user' && epoch_time != 'no deposit'){
-                if (exp_date >= now){
-                    txt = ctx.chat.id + '|-|' + new Date().toLocaleString() + '|-|' + 'rent';
-                    txt_en = encrypt(txt);
-                    console.log('-->' + txt_en + '<--')
-                        QRCode.toFile('./'+ctx.from.id+'_rent.jpeg', txt, function(err){
-                        if (err) throw err
-                
-                        try{
-                            filepath = `./`+ctx.from.id+`_rent.jpeg`;                
-                            ctx.replyWithPhoto({ source: filepath });
-                            ctx.reply('Scan QR code to get a lunchbox!');
-                            //demo only
-                            queryString = `INSERT INTO rental (t_id, b_id) VALUES ('${ctx.from.id}', 1);` // demo only insert deposit auto
-                            con.query(queryString);//demo only            
-                            delay(2000).then(() => {
-                                ctx.reply(`Success, enjoy your Reeve box`);     
-                            });
+                getRental(ctx.from.id, function(err, data){
+                    if (err) { console.log("ERROR: ", err);}
+                    else{
+                        rental_sta = data;
+                        if (data != 'no rental'){
+                            ctx.reply(`You already have a rental. Type /return to return before renting a new one.`);
+                        }else{
+                            if (exp_date >= now){
+                                txt = ctx.chat.id + '|-|' + new Date().toLocaleString() + '|-|' + 'rent';
+                                txt_en = encrypt(txt);
+                                console.log('-->' + txt_en + '<--')
+                                    QRCode.toFile('./'+ctx.from.id+'_rent.jpeg', txt, function(err){
+                                    if (err) throw err
+                            
+                                    try{
+                                        filepath = `./`+ctx.from.id+`_rent.jpeg`;                
+                                        ctx.replyWithPhoto({ source: filepath });
+                                        ctx.reply('Scan QR code to get a lunchbox!');
+                                        //demo only
+                                        queryString = `INSERT INTO rental (t_id, b_id) VALUES ('${ctx.from.id}', 1);` // demo only insert deposit auto
+                                        con.query(queryString);//demo only            
+                                        delay(2000).then(() => {
+                                            ctx.reply(`Success, enjoy your Reeve box`);     
+                                        });
+                                    }
+                                    catch (err){
+                                        console.log(err)
+                                    }
+                            
+                                })                                    
+                            }else{                                    
+                                
+                                ctx.reply('Your deposit expired on ' + formatDate(exp_date) + '. Please type /info to deposit again');    
+                            }
                         }
-                        catch (err){
-                            console.log(err)
-                        }
-                
-                    })                                    
-                }else{                                    
+
+                    }
+
+
+
+                })
+
                     
-                    ctx.reply('Your deposit expired on ' + formatDate(exp_date) + '. Please type /info to deposit again');    
-                }
             }else{
                 ctx.reply('You have no deposit, type /info to continue.');    
 
@@ -534,7 +552,7 @@ function getRental(id, callback){
                     callback(null, result[0].r_id);
                 }
                 else{
-                    callback(null, 'no user');
+                    callback(null, 'no rental');
                 }
                 
 
